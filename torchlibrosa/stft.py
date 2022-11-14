@@ -31,8 +31,8 @@ class DFTBase(nn.Module):
 
 class DFT(DFTBase):
     def __init__(self, n, norm):
-        r"""Calculate discrete Fourier transform (DFT), inverse DFT (IDFT, 
-        right DFT (RDFT) RDFT, and inverse RDFT (IRDFT.) 
+        r"""Calculate discrete Fourier transform (DFT), inverse DFT (IDFT,
+        right DFT (RDFT) RDFT, and inverse RDFT (IRDFT.)
 
         Args:
           n: fft window size
@@ -155,7 +155,7 @@ class DFT(DFTBase):
 class STFT(DFTBase):
     def __init__(self, n_fft=2048, hop_length=None, win_length=None,
         window='hann', center=True, pad_mode='reflect', freeze_parameters=True):
-        r"""PyTorch implementation of STFT with Conv1d. The function has the 
+        r"""PyTorch implementation of STFT with Conv1d. The function has the
         same output as librosa.stft.
 
         Args:
@@ -221,7 +221,7 @@ class STFT(DFTBase):
     def forward(self, input):
         r"""Calculate STFT of batch of signals.
 
-        Args: 
+        Args:
             input: (batch_size, data_length), input signals.
 
         Returns:
@@ -266,9 +266,9 @@ def magphase(real, imag):
 
 class ISTFT(DFTBase):
     def __init__(self, n_fft=2048, hop_length=None, win_length=None,
-        window='hann', center=True, pad_mode='reflect', freeze_parameters=True, 
+        window='hann', center=True, pad_mode='reflect', freeze_parameters=True,
         onnx=False, frames_num=None, device=None):
-        """PyTorch implementation of ISTFT with Conv1d. The function has the 
+        """PyTorch implementation of ISTFT with Conv1d. The function has the
         same output as librosa.istft.
 
         Args:
@@ -282,7 +282,7 @@ class ISTFT(DFTBase):
                 to False to finetune all parameters.
             onnx: bool, set to True when exporting trained model to ONNX. This
                 will replace several operations to operators supported by ONNX.
-            frames_num: None | int, number of frames of audio clips to be 
+            frames_num: None | int, number of frames of audio clips to be
                 inferneced. Only useable when onnx=True.
             device: None | str, device of ONNX. Only useable when onnx=True.
         """
@@ -373,7 +373,7 @@ class ISTFT(DFTBase):
             device: str | None
         """
 
-        # Use Conv1d to implement torch.flip(), because torch.flip() is not 
+        # Use Conv1d to implement torch.flip(), because torch.flip() is not
         # supported by ONNX.
         self.reverse = nn.Conv1d(in_channels=self.n_fft // 2 + 1,
             out_channels=self.n_fft // 2 - 1, kernel_size=1, bias=False)
@@ -383,7 +383,7 @@ class ISTFT(DFTBase):
         self.reverse.weight.data = torch.Tensor(tmp)
         # (n_fft // 2 - 1, n_fft // 2 + 1, 1)
 
-        # Use nn.ConvTranspose2d to implement torch.nn.functional.fold(), 
+        # Use nn.ConvTranspose2d to implement torch.nn.functional.fold(),
         # because torch.nn.functional.fold() is not supported by ONNX.
         self.overlap_add = nn.ConvTranspose2d(in_channels=self.n_fft,
             out_channels=1, kernel_size=(self.n_fft, 1), stride=(self.hop_length, 1), bias=False)
@@ -458,7 +458,7 @@ class ISTFT(DFTBase):
 
     def _get_full_stft_onnx(self, real_stft, imag_stft):
         r"""Get full stft representation from spectrum using symmetry attribute
-        for ONNX. Replace several pytorch operations in self._get_full_stft() 
+        for ONNX. Replace several pytorch operations in self._get_full_stft()
         that are not supported by ONNX.
 
         Args:
@@ -490,10 +490,10 @@ class ISTFT(DFTBase):
         output_samples = (s_real.shape[-1] - 1) * self.hop_length + self.win_length
         # (audio_samples,)
 
-        # Overlap-add signals in frames to signals. Ref: 
+        # Overlap-add signals in frames to signals. Ref:
         # asteroid_filterbanks.torch_stft_fb.torch_stft_fb() from
         # https://github.com/asteroid-team/asteroid-filterbanks
-        y = torch.nn.functional.fold(input=s_real, output_size=(1, output_samples), 
+        y = torch.nn.functional.fold(input=s_real, output_size=(1, output_samples),
             kernel_size=(1, self.win_length), stride=(1, self.hop_length))
         # (batch_size, 1, 1, audio_samples,)
         
@@ -525,7 +525,7 @@ class ISTFT(DFTBase):
             frames_num: int
 
         Returns:
-            ifft_window_sum: (audio_samlpes,), overlap-add window sum to be 
+            ifft_window_sum: (audio_samlpes,), overlap-add window sum to be
             divided.
         """
         
@@ -535,8 +535,8 @@ class ISTFT(DFTBase):
         window_matrix = self.ola_window[None, :, None].repeat(1, 1, frames_num)
         # (batch_size, win_length, time_steps)
 
-        ifft_window_sum = F.fold(input=window_matrix, 
-            output_size=(1, output_samples), kernel_size=(1, self.win_length), 
+        ifft_window_sum = F.fold(input=window_matrix,
+            output_size=(1, output_samples), kernel_size=(1, self.win_length),
             stride=(1, self.hop_length))
         # (1, 1, 1, audio_samples)
         
@@ -546,8 +546,8 @@ class ISTFT(DFTBase):
         return ifft_window_sum
 
     def _overlap_add_divide_window_sum_onnx(self, s_real, frames_num):
-        r"""Overlap add signals in frames to reconstruct signals for ONNX. 
-        Replace several pytorch operations in 
+        r"""Overlap add signals in frames to reconstruct signals for ONNX.
+        Replace several pytorch operations in
         self._overlap_add_divide_window_sum() that are not supported by ONNX.
 
         Args:
@@ -563,7 +563,7 @@ class ISTFT(DFTBase):
 
         # Implement overlap-add with Conv1d, because torch.nn.functional.fold()
         # is not supported by ONNX.
-        y = self.overlap_add(s_real)[:, 0, :, 0]    
+        y = self.overlap_add(s_real)[:, 0, :, 0]
         # y: (batch_size, samples_num)
         
         if len(self.ifft_window_sum) != y.shape[1]:
@@ -572,7 +572,7 @@ class ISTFT(DFTBase):
             self.ifft_window_sum = self._get_ifft_window_sum_onnx(frames_num, device)
             # (audio_samples,)
 
-        # Use torch.clamp() to prevent from underflow to make sure all 
+        # Use torch.clamp() to prevent from underflow to make sure all
         # operations are supported by ONNX.
         ifft_window_sum = torch.clamp(self.ifft_window_sum, 1e-11, np.inf)
         # (audio_samples,)
@@ -594,8 +594,8 @@ class ISTFT(DFTBase):
             ifft_window_sum: (audio_samples,)
         """
         
-        ifft_window_sum = librosa.filters.window_sumsquare(window=self.window, 
-            n_frames=frames_num, win_length=self.win_length, n_fft=self.n_fft, 
+        ifft_window_sum = librosa.filters.window_sumsquare(window=self.window,
+            n_frames=frames_num, win_length=self.win_length, n_fft=self.n_fft,
             hop_length=self.hop_length)
         # (audio_samples,)
 
@@ -635,7 +635,7 @@ class Spectrogram(nn.Module):
     def __init__(self, n_fft=2048, hop_length=None, win_length=None,
         window='hann', center=True, pad_mode='reflect', power=2.0,
         freeze_parameters=True):
-        r"""Calculate spectrogram using pytorch. The STFT is implemented with 
+        r"""Calculate spectrogram using pytorch. The STFT is implemented with
         Conv1d. The function has the same output of librosa.stft
         """
         super(Spectrogram, self).__init__()
@@ -648,7 +648,7 @@ class Spectrogram(nn.Module):
 
     def forward(self, input):
         r"""Calculate spectrogram of input signals.
-        Args: 
+        Args:
             input: (batch_size, data_length)
 
         Returns:
@@ -669,10 +669,10 @@ class Spectrogram(nn.Module):
 
 
 class LogmelFilterBank(nn.Module):
-    def __init__(self, sr=22050, n_fft=2048, n_mels=64, fmin=0.0, fmax=None, 
+    def __init__(self, sr=22050, n_fft=2048, n_mels=64, fmin=0.0, fmax=None,
         is_log=True, ref=1.0, amin=1e-10, top_db=80.0, freeze_parameters=True):
-        r"""Calculate logmel spectrogram using pytorch. The mel filter bank is 
-        the pytorch implementation of as librosa.filters.mel 
+        r"""Calculate logmel spectrogram using pytorch. The mel filter bank is
+        the pytorch implementation of as librosa.filters.mel
         """
         super(LogmelFilterBank, self).__init__()
 
@@ -699,7 +699,7 @@ class LogmelFilterBank(nn.Module):
         Args:
             input: (*, n_fft), spectrogram
         
-        Returns: 
+        Returns:
             output: (*, mel_bins), (log) mel spectrogram
         """
 
@@ -717,7 +717,7 @@ class LogmelFilterBank(nn.Module):
 
 
     def power_to_db(self, input):
-        r"""Power to db, this function is the pytorch implementation of 
+        r"""Power to db, this function is the pytorch implementation of
         librosa.power_to_lb
         """
         ref_value = self.ref
@@ -734,7 +734,7 @@ class LogmelFilterBank(nn.Module):
 
 class Enframe(nn.Module):
     def __init__(self, frame_length=2048, hop_length=512):
-        r"""Enframe a time sequence. This function is the pytorch implementation 
+        r"""Enframe a time sequence. This function is the pytorch implementation
         of librosa.util.frame
         """
         super(Enframe, self).__init__()
@@ -751,7 +751,7 @@ class Enframe(nn.Module):
         Args:
             input: (batch_size, samples)
         
-        Returns: 
+        Returns:
             output: (batch_size, window_length, frames_num)
         """
         output = self.enframe_conv(input[:, None, :])
@@ -759,7 +759,7 @@ class Enframe(nn.Module):
 
 
     def power_to_db(self, input):
-        r"""Power to db, this function is the pytorch implementation of 
+        r"""Power to db, this function is the pytorch implementation of
         librosa.power_to_lb.
         """
         ref_value = self.ref
@@ -790,7 +790,7 @@ class Scalar(nn.Module):
 
 
 def debug(select, device):
-    """Compare numpy + librosa and torchlibrosa results. For debug. 
+    """Compare numpy + librosa and torchlibrosa results. For debug.
 
     Args:
         select: 'dft' | 'logmel'
